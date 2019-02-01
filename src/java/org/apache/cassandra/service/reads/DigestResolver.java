@@ -212,6 +212,11 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                         String newVal = String.join("",dataRes);
                         logger.info("Joined value now is: {}", newVal);
                         c.setValue(ByteBufferUtil.bytes(newVal));
+                        try{
+                          logger.info(ByteBufferUtil.string(c.value()));
+                        } catch (CharacterCodingException e){
+                          logger.info("char coding exception");
+                        }
                     }
                 }
                 rowId++;

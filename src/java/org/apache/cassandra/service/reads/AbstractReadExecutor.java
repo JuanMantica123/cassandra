@@ -52,7 +52,7 @@ import org.apache.cassandra.service.reads.repair.ReadRepair;
 import org.apache.cassandra.service.StorageProxy.LocalReadRunnable;
 import org.apache.cassandra.tracing.TraceState;
 import org.apache.cassandra.tracing.Tracing;
-
+import org.apache.cassandra.db.rows.RowIterator;
 
 import static com.google.common.collect.Iterables.all;
 
@@ -174,10 +174,11 @@ public abstract class AbstractReadExecutor
     public void executeAsync()
     {
         EndpointsForToken selected = replicaPlan().contacts();
-        EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
-        makeFullDataRequests(fullDataRequests);
-        makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
-        makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
+    //    EndpointsForToken fullDataRequests = selected.filter(Replica::isFull, initialDataRequestCount);
+        makeFullDataRequests(selected);
+      //  makeFullDataRequests(fullDataRequests);
+      //  makeTransientDataRequests(selected.filterLazily(Replica::isTransient));
+      //  makeDigestRequests(selected.filterLazily(r -> r.isFull() && !fullDataRequests.contains(r)));
     }
 
     /**

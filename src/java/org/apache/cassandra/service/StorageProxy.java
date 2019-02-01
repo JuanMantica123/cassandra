@@ -1895,7 +1895,7 @@ public class StorageProxy implements StorageProxyMBean
         for (int i=0; i<cmdCount; i++)
         {
             results.add(reads[i].getResult());
-            repairs.add(reads[i].getReadRepair());
+            //repairs.add(reads[i].getReadRepair());
         }
 
         // if we did a read repair, assemble repair mutation and block on them
