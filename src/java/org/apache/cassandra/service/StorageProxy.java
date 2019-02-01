@@ -1796,7 +1796,9 @@ public class StorageProxy implements StorageProxyMBean
     {
         PartitionIterator concatenated = PartitionIterators.concat(iterators);
 
-        if (repairs.isEmpty())
+      //  if (repairs.isEmpty())
+            
+          if (true)
             return concatenated;
 
         return new PartitionIterator()

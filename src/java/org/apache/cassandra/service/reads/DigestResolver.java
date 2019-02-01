@@ -138,15 +138,22 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
 
     public ReadResponse mergeResponse()
     {
-        ReadResponse result = responses.get(0).payload;
+        Collection<MessageIn<ReadResponse>> rsps = responses.snapshot();
+        ReadResponse result = null;
 
         ColumnIdentifier col = new ColumnIdentifier("kishori", true);
 
         Map<Integer,Map<Integer, List<String>>> partitionRes = new HashMap<>();
-        for (MessageIn<ReadResponse> msg : responses.snapshot()){
+        for (MessageIn<ReadResponse> msg : rsps){
             ReadResponse readRes = msg.payload;
 
-            assert readRes.isDigestResponse() == false;
+            if (result == null)
+              result = readRes;
+           // assert readRes.isDigestResponse() == false;
+            if (readRes.isDigestResponse()){
+              logger.info(readRes.toString());
+              continue;
+            }
             PartitionIterator pi = UnfilteredPartitionIterators.filter(readRes.makeIterator(command), command.nowInSec());
             
             int pId = 0;
@@ -163,7 +170,6 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                     if(dataRes == null)
                         dataRes = new ArrayList<>();
                     Row r = ri.next();
-                    logger.info(r.toString());
                     for(Cell c : r.cells())
                     {
                         if(c.column().name.equals(col))
@@ -171,6 +177,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                             try
                             {
                                 String value  = ByteBufferUtil.string(c.value());
+                                logger.info("extract value: {}", value);
                                 dataRes.add(value);
                             }
                             catch(CharacterCodingException e)
@@ -189,7 +196,6 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
 
         PartitionIterator pi = UnfilteredPartitionIterators.filter(result.makeIterator(command), command.nowInSec());
         int pId = 0;
-        logger.info("Joining data partitions");
         while(pi.hasNext())
         {   
             Map<Integer,List<String>> rowRes = partitionRes.get(pId);
@@ -202,6 +208,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
                 {
                     if(c.column().name.equals(col))
                     {
+                        logger.info("Joining {} data partitions", Integer.toString(dataRes.size()));
                         String newVal = String.join("",dataRes);
                         logger.info("Joined value now is: {}", newVal);
                         c.setValue(ByteBufferUtil.bytes(newVal));
