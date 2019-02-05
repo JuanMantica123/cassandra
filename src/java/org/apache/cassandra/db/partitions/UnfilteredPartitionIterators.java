@@ -319,7 +319,8 @@ public abstract class UnfilteredPartitionIterators
             out.writeBoolean(false);
         }
 
-        public UnfilteredPartitionIterator deserialize(final DataInputPlus in, final int version, final TableMetadata metadata, final ColumnFilter selection, final SerializationHelper.Flag flag) throws IOException
+
+        public UnfilteredPartitionIterator deserialize(final DataInputPlus in, final int version, final TableMetadata metadata, final ColumnFilter selection, final SerializationHelper.Flag flag, Map<Integer,Map<Integer,List<String>>> result) throws IOException
         {
             // Skip now unused isForThrift boolean
             in.readBoolean();
@@ -329,6 +330,7 @@ public abstract class UnfilteredPartitionIterators
                 private UnfilteredRowIterator next;
                 private boolean hasNext;
                 private boolean nextReturned = true;
+                private int pId = 0;
 
                 public TableMetadata metadata()
                 {
@@ -376,7 +378,11 @@ public abstract class UnfilteredPartitionIterators
                     try
                     {
                         nextReturned = true;
-                        next = UnfilteredRowIteratorSerializer.serializer.deserialize(in, version, metadata, selection, flag);
+                        Map<Integer,List<String>> ml = null;
+                        if(result != null)
+                            ml = result.get(pId);
+                        next = UnfilteredRowIteratorSerializer.serializer.deserialize(in, version, metadata, selection, flag, ml);
+                        pId++;
                         return next;
                     }
                     catch (IOException e)

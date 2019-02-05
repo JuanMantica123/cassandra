@@ -385,13 +385,13 @@ public abstract class AbstractReadExecutor
             }
         }
 
-        ReadResponse mergerdResponse = digestResolver.mergeResponse();
+        PartitionIterator mergerdResponse = digestResolver.mergeResponse();
 
         // return immediately, or begin a read repair
         if (mergerdResponse != null)
         {
           logger.info("using merged");
-            setResult(UnfilteredPartitionIterators.filter(mergerdResponse.makeIterator(command), command.nowInSec()));
+            setResult(mergerdResponse);
         }
         else
         {

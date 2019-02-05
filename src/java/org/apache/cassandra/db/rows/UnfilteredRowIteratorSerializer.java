@@ -19,6 +19,8 @@ package org.apache.cassandra.db.rows;
 
 import java.io.IOException;
 import java.io.IOError;
+import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -206,6 +208,11 @@ public class UnfilteredRowIteratorSerializer
 
     public UnfilteredRowIterator deserialize(DataInputPlus in, int version, TableMetadata metadata, SerializationHelper.Flag flag, Header header) throws IOException
     {
+        return deserialize(in, version, metadata, flag, header, null);
+    }
+
+    public UnfilteredRowIterator deserialize(DataInputPlus in, int version, TableMetadata metadata, SerializationHelper.Flag flag, Header header, Map<Integer,List<String>> result) throws IOException
+    {
         if (header.isEmpty)
             return EmptyIterators.unfilteredRow(metadata, header.key, header.isReversed);
 
@@ -214,12 +221,20 @@ public class UnfilteredRowIteratorSerializer
         return new AbstractUnfilteredRowIterator(metadata, header.key, header.partitionDeletion, sHeader.columns(), header.staticRow, header.isReversed, sHeader.stats())
         {
             private final Row.Builder builder = BTreeRow.sortedBuilder();
+            private int rowId = 0;
 
             protected Unfiltered computeNext()
             {
                 try
                 {
-                    Unfiltered unfiltered = UnfilteredSerializer.serializer.deserialize(in, sHeader, helper, builder);
+                    String update = null;
+                    if (result != null){
+                        List<String> stringList = result.get(rowId);
+                        update = stringList != null ? String.join("", stringList) : null;
+                    }
+
+                    Unfiltered unfiltered = UnfilteredSerializer.serializer.deserialize(in, sHeader, helper, builder, update);
+                    rowId++;
                     return unfiltered == null ? endOfData() : unfiltered;
                 }
                 catch (IOException e)
@@ -230,9 +245,9 @@ public class UnfilteredRowIteratorSerializer
         };
     }
 
-    public UnfilteredRowIterator deserialize(DataInputPlus in, int version, TableMetadata metadata, ColumnFilter selection, SerializationHelper.Flag flag) throws IOException
+    public UnfilteredRowIterator deserialize(DataInputPlus in, int version, TableMetadata metadata, ColumnFilter selection, SerializationHelper.Flag flag, Map<Integer,List<String>> result) throws IOException
     {
-        return deserialize(in, version, metadata, flag, deserializeHeader(metadata, selection, in, version, flag));
+        return deserialize(in, version, metadata, flag, deserializeHeader(metadata, selection, in, version, flag), result);
     }
 
     public static class Header
