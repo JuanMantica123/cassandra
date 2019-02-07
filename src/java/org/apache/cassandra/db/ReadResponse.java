@@ -19,6 +19,8 @@ package org.apache.cassandra.db;
 
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.hash.Hasher;
@@ -70,6 +72,7 @@ public abstract class ReadResponse
     }
 
     public abstract UnfilteredPartitionIterator makeIterator(ReadCommand command);
+    public abstract UnfilteredPartitionIterator makeIterator(ReadCommand command, Map<Integer,Map<Integer, List<String>>> result);
     public abstract ByteBuffer digest(ReadCommand command);
     public abstract ByteBuffer repairedDataDigest();
     public abstract boolean isRepairedDigestConclusive();
@@ -141,6 +144,11 @@ public abstract class ReadResponse
         }
 
         public UnfilteredPartitionIterator makeIterator(ReadCommand command)
+        {
+            throw new UnsupportedOperationException();
+        }
+
+        public UnfilteredPartitionIterator makeIterator(ReadCommand command, Map<Integer,Map<Integer,List<String>>> result)
         {
             throw new UnsupportedOperationException();
         }
@@ -238,7 +246,12 @@ public abstract class ReadResponse
             this.flag = flag;
         }
 
-        public UnfilteredPartitionIterator makeIterator(ReadCommand command)
+
+        public UnfilteredPartitionIterator makeIterator(ReadCommand command){
+            return this.makeIterator(command, null);
+        }
+
+        public UnfilteredPartitionIterator makeIterator(ReadCommand command,Map<Integer,Map<Integer, List<String>>> result)
         {
             try (DataInputBuffer in = new DataInputBuffer(data, true))
             {
@@ -249,7 +262,8 @@ public abstract class ReadResponse
                                                                                          dataSerializationVersion,
                                                                                          command.metadata(),
                                                                                          command.columnFilter(),
-                                                                                         flag);
+                                                                                         flag,
+                                                                                        result);
             }
             catch (IOException e)
             {

@@ -136,7 +136,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
         return true;
     }
 
-    public ReadResponse mergeResponse()
+    public PartitionIterator mergeResponse()
     {
         Collection<MessageIn<ReadResponse>> rsps = responses.snapshot();
         ReadResponse result = null;
@@ -194,38 +194,7 @@ public class DigestResolver<E extends Endpoints<E>, P extends ReplicaPlan.ForRea
             }
         }
 
-        PartitionIterator pi = UnfilteredPartitionIterators.filter(result.makeIterator(command), command.nowInSec());
-        int pId = 0;
-        while(pi.hasNext())
-        {   
-            Map<Integer,List<String>> rowRes = partitionRes.get(pId);
-            RowIterator ri = pi.next();
-            int rowId = 0;
-            while(ri.hasNext())
-            {
-                List<String> dataRes = rowRes.get(rowId);
-                for(Cell c : ri.next().cells())
-                {
-                    if(c.column().name.equals(col))
-                    {
-                        logger.info("Joining {} data partitions", Integer.toString(dataRes.size()));
-                        String newVal = String.join("",dataRes);
-                        logger.info("Joined value now is: {}", newVal);
-                        c.setValue(ByteBufferUtil.bytes(newVal));
-                        try{
-                          logger.info(ByteBufferUtil.string(c.value()));
-                        } catch (CharacterCodingException e){
-                          logger.info("char coding exception");
-                        }
-                    }
-                }
-                rowId++;
-            }
-            pId++;
-        }
-
-
-        return result;
+        return UnfilteredPartitionIterators.filter(result.makeIterator(command,partitionRes), command.nowInSec());
     }
 
     public boolean isDataPresent()

@@ -18,10 +18,13 @@
 package org.apache.cassandra.db.rows;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Map;
 
 import com.google.common.collect.Collections2;
 
 import net.nicoulaj.compilecommand.annotations.Inline;
+import org.apache.cassandra.cql3.ColumnIdentifier;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.db.*;
 import org.apache.cassandra.db.rows.Row.Deletion;
@@ -29,6 +32,7 @@ import org.apache.cassandra.io.util.DataInputPlus;
 import org.apache.cassandra.io.util.DataOutputBuffer;
 import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.io.util.FileDataInput;
+import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.SearchIterator;
 import org.apache.cassandra.utils.WrappedException;
 
@@ -429,11 +433,17 @@ public class UnfilteredSerializer
      * guaranteed to never return empty rows.
      */
     public Unfiltered deserialize(DataInputPlus in, SerializationHeader header, SerializationHelper helper, Row.Builder builder)
+            throws IOException
+    {
+        return deserialize(in, header, helper, builder, null);
+    }
+
+    public Unfiltered deserialize(DataInputPlus in, SerializationHeader header, SerializationHelper helper, Row.Builder builder, String result)
     throws IOException
     {
         while (true)
         {
-            Unfiltered unfiltered = deserializeOne(in, header, helper, builder);
+            Unfiltered unfiltered = deserializeOne(in, header, helper, builder, result);
             if (unfiltered == null)
                 return null;
 
@@ -453,7 +463,7 @@ public class UnfilteredSerializer
      * But as {@link UnfilteredRowIterator} should not return empty
      * rows, this mean consumer of this method should make sure to skip said empty rows.
      */
-    private Unfiltered deserializeOne(DataInputPlus in, SerializationHeader header, SerializationHelper helper, Row.Builder builder)
+    private Unfiltered deserializeOne(DataInputPlus in, SerializationHeader header, SerializationHelper helper, Row.Builder builder, String result)
     throws IOException
     {
         // It wouldn't be wrong per-se to use an unsorted builder, but it would be inefficient so make sure we don't do it by mistake
@@ -477,7 +487,15 @@ public class UnfilteredSerializer
                 throw new IOException("Corrupt flags value for unfiltered partition (isStatic flag set): " + flags);
 
             builder.newRow(Clustering.serializer.deserialize(in, helper.version, header.clusteringTypes()));
-            return deserializeRowBody(in, header, helper, flags, extendedFlags, builder);
+            Row tmp = deserializeRowBody(in, header, helper, flags, extendedFlags, builder);
+            if(result != null) {
+                ColumnIdentifier ci = new ColumnIdentifier("kishori", true);
+                for (Cell c : tmp.cells()) {
+                    if (c.column().name.equals(ci))
+                        c.setValue(ByteBufferUtil.bytes(result));
+                }
+            }
+            return tmp;
         }
     }
 
